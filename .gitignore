@@ -1,0 +1,8 @@
+.venv/
+__pycache__/
+*.pyc
+seats.csv
+_archive/
+
+# Never commit real secrets. secrets.toml.example is the template.
+.streamlit/secrets.toml
