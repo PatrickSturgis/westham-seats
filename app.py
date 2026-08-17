@@ -7,11 +7,13 @@ it survives the Space going to sleep.
 
 from __future__ import annotations
 
+import hmac
+
 import pandas as pd
 import streamlit as st
 
 from fixtures import SEAT_OPTIONS, SHARERS
-from store import get_backend, resync
+from store import get_backend, resync, setting
 
 st.set_page_config(
     page_title="West Ham Season Tickets 2026/27",
@@ -22,9 +24,39 @@ st.set_page_config(
 SEAT_COLS = ["seat_1", "seat_2"]
 CLAIMED = set(SHARERS) | {"Guest"}
 
-# Access is controlled by the Streamlit Community Cloud viewer list, so
-# there is no passcode here. Only invited email addresses can load the app
-# at all.
+
+# ----------------------------------------------------------------------
+# Passcode gate
+# ----------------------------------------------------------------------
+
+def locked() -> bool:
+    """Show a passcode box until the right one is entered.
+
+    The app is public, so this is the only thing standing between a
+    passer-by and your seat assignments. The passcode comes from the
+    APP_PASSCODE secret, never from the source. With no secret set
+    (running locally) the gate is skipped.
+    """
+    expected = setting("APP_PASSCODE")
+    if not expected or st.session_state.get("unlocked"):
+        return False
+
+    st.title("⚽ West Ham Season Tickets")
+    st.caption("Enter the passcode.")
+
+    with st.form("gate"):
+        attempt = st.text_input("Passcode", type="password")
+        if st.form_submit_button("Enter", type="primary"):
+            if hmac.compare_digest(attempt.strip(), expected):
+                st.session_state.unlocked = True
+                st.rerun()
+            else:
+                st.error("Wrong passcode.")
+    return True
+
+
+if locked():
+    st.stop()
 
 
 # ----------------------------------------------------------------------
